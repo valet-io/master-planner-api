@@ -66,6 +66,23 @@ describe('MasterPlanner', function () {
       });
     });
 
-  })
+    it('uses the credentials', function () {
+      post.yields(null, loginMock.success);
+      return masterPlanner.login().finally(function () {
+        sinon.assert.calledWith(post, sinon.match.has('form', {
+          u: masterPlanner.credentials.email,
+          p: masterPlanner.credentials.password
+        }));
+      });
+    });
+
+    it('uses the cookie jar', function () {
+      post.yields(null, loginMock.success);
+      return masterPlanner.login().finally(function () {
+        sinon.assert.calledWith(post, sinon.match.has('jar', masterPlanner.cookies));
+      });
+    });
+
+  });
 
 });
