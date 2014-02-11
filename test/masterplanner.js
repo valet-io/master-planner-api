@@ -24,8 +24,14 @@ describe('MasterPlanner', function () {
     });
 
     it('sets credentials', function () {
-      expect(new MasterPlanner('newyork', 'c'))
+      expect(new MasterPlanner(null, 'c'))
         .to.have.property('credentials', 'c');
+    });
+
+    it('opens a cookie jar', function () {
+      expect(masterPlanner)
+        .to.have.property('cookies')
+        .with.property('_jar');
     });
 
   });
