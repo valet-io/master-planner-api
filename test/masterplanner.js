@@ -2,7 +2,7 @@
 
 var expect        = require('chai').expect,
     sinon         = require('sinon'),
-    request       = require('request'), 
+    request       = require('request'),
     MasterPlanner = require('../lib/masterplanner');
 
 describe('MasterPlanner', function () {
@@ -16,7 +16,7 @@ describe('MasterPlanner', function () {
     });
   });
 
-  describe('constructor', function () {
+  describe('Constructor', function () {
 
     it('sets a city', function () {
       expect(new MasterPlanner('newyork'))
@@ -59,28 +59,62 @@ describe('MasterPlanner', function () {
         .to.equal('c');
     });
 
-    it('POSTs to the city endpoint', function () {
-      post.yields(null, loginMock.success);
-      return masterPlanner.login().finally(function () {
-        sinon.assert.calledWith(post, sinon.match.has('url', 'http://masterplanneronline.com/Handlers/Login.ashx?region=' + masterPlanner.city));
+    describe('Options', function () {
+
+      it('POSTs to the city endpoint', function () {
+        post.yields(null, loginMock.success);
+        return masterPlanner.login().finally(function () {
+          sinon.assert.calledWith(post, sinon.match.has('url', 'http://masterplanneronline.com/Handlers/Login.ashx?region=' + masterPlanner.city));
+        });
       });
+
+      it('uses the credentials', function () {
+        post.yields(null, loginMock.success);
+        return masterPlanner.login().finally(function () {
+          sinon.assert.calledWith(post, sinon.match.has('form', {
+            u: masterPlanner.credentials.email,
+            p: masterPlanner.credentials.password
+          }));
+        });
+      });
+
+      it('uses the cookie jar', function () {
+        post.yields(null, loginMock.success);
+        return masterPlanner.login().finally(function () {
+          sinon.assert.calledWith(post, sinon.match.has('jar', masterPlanner.cookies));
+        });
+      });
+
     });
 
-    it('uses the credentials', function () {
-      post.yields(null, loginMock.success);
-      return masterPlanner.login().finally(function () {
-        sinon.assert.calledWith(post, sinon.match.has('form', {
-          u: masterPlanner.credentials.email,
-          p: masterPlanner.credentials.password
-        }));
-      });
-    });
+    describe('Response handling', function () {
 
-    it('uses the cookie jar', function () {
-      post.yields(null, loginMock.success);
-      return masterPlanner.login().finally(function () {
-        sinon.assert.calledWith(post, sinon.match.has('jar', masterPlanner.cookies));
+      describe('Errors', function () {
+
+        it('rejects on an login error response', function () {
+          post.yields(null, loginMock.invalidCredentials);
+          return expect(masterPlanner.login())
+            .to.be.rejectedWith(/credentials/);
+        });
+
+        it('throws on any response body', function () {
+          post.yields(null, loginMock.unexpectedResponse);
+          return expect(masterPlanner.login())
+            .to.be.rejectedWith(/Unexpected/);
+        });
+
       });
+
+      describe('Success', function () {
+
+        it('resolves with null', function () {
+          post.yields(null, loginMock.success);
+          return expect(masterPlanner.login())
+            .to.eventually.be.null;
+        });
+
+      });
+
     });
 
   });
