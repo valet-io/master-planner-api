@@ -3,17 +3,26 @@
 var expect        = require('chai').expect,
     sinon         = require('sinon'),
     request       = require('request'),
+    moment        = require('moment'),
     MasterPlanner = require('../lib/masterplanner');
 
 describe('MasterPlanner', function () {
 
-  var masterPlanner;
+  var masterPlanner, post;
 
   beforeEach(function () {
     masterPlanner = new MasterPlanner('newyork', {
       email: 'email',
       password: 'pass'
     });
+  });
+
+  beforeEach(function () {
+    post = sinon.stub(request, 'post');
+  });
+
+  afterEach(function () {
+    post.restore();
   });
 
   describe('Constructor', function () {
@@ -39,15 +48,6 @@ describe('MasterPlanner', function () {
   describe('#login', function () {
 
     var loginMock = require('./mocks/login');
-    var post;
-
-    beforeEach(function () {
-      post = sinon.stub(request, 'post');
-    });
-
-    afterEach(function () {
-      post.restore();
-    });
 
     it('can override credentials if provided', function () {
       post.yields(null, loginMock.success);
@@ -122,6 +122,114 @@ describe('MasterPlanner', function () {
           });
         });
 
+      });
+
+    });
+
+  });
+
+  describe('#query', function () {
+
+    beforeEach(function () {
+      masterPlanner.authenticated = true;
+    });
+
+    it('requires authentication', function () {
+      masterPlanner.authenticated = false;
+      expect(masterPlanner.query.bind(masterPlanner))
+        .to.throw(/Authenticate/);
+    });
+
+    it('uses the city endpoint', function () {
+      masterPlanner.query();
+      sinon.assert.calledWith(post, sinon.match.has('url', 'http://masterplanneronline.com/newyork'));
+    });
+
+    describe('Options', function () {
+
+      var form = function (key) {
+        return post.lastCall.args[0].form[key];
+      };
+
+      var key;
+
+      describe('keywords', function () {
+
+        before(function () {
+          key = 'ctl00$txtSearch';
+        });
+
+        it('is empty by default', function () {
+          masterPlanner.query();
+          expect(form(key)).to.equal('');
+        });
+
+        it('can set a keywords string', function () {
+          masterPlanner.query({
+            keywords: 'key value'
+          });
+          expect(form(key)).to.equal('key value');
+        });
+
+        it('can set an array of keywords', function () {
+          masterPlanner.query({
+            keywords: ['key', 'value', 'array']
+          });
+          expect(form(key)).to.equal('key value array');
+        });
+
+      });
+
+      describe('from', function () {
+
+        before(function () {
+          key = 'ctl00$txtDateFrom';
+        });
+
+        it('is today by default', function () {
+          masterPlanner.query();
+          expect(form(key))
+            .to.equal(moment().format('l'));
+        });
+
+        it('can be set to another date', function () {
+          var date = moment().add('days', 1);
+          masterPlanner.query({
+            from: date.toJSON()
+          });
+          expect(form(key))
+            .to.equal(date.format('l'));
+        });
+
+      });
+
+      describe('to', function () {
+
+        before(function () {
+          key = 'ctl00$txtDateTo';
+        });
+
+        it('is in one week by default', function () {
+          masterPlanner.query();
+          expect(form(key))
+            .to.equal(moment().add('days', 6).format('l'));
+        });
+
+        it('can be set to another date', function () {
+          var date = moment().add('days', 10);
+          masterPlanner.query({
+            to: date.toJSON()
+          });
+          expect(form(key))
+            .to.equal(date.format('l'));
+        });
+
+      });
+
+      it('sets non-changeable form parameters', function () {
+        masterPlanner.query();
+        expect(post.lastCall.args[0].form)
+          .to.contain.keys('__EVENTTARGET', '__EVENTARGUMENT', 'ctl00$ddSearchType', 'ctl00$ddDateRange');
       });
 
     });
