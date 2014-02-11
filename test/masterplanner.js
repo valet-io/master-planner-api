@@ -107,10 +107,19 @@ describe('MasterPlanner', function () {
 
       describe('Success', function () {
 
-        it('resolves with null', function () {
+        beforeEach(function () {
           post.yields(null, loginMock.success);
+        });
+
+        it('resolves with null', function () {
           return expect(masterPlanner.login())
             .to.eventually.be.null;
+        });
+
+        it('marks the client as authenticated', function () {
+          return masterPlanner.login().then(function () {
+            expect(masterPlanner).to.have.property('authenticated', true);
+          });
         });
 
       });
